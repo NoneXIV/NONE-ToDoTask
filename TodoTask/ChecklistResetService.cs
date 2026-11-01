@@ -2,15 +2,10 @@ using System;
 
 namespace TodoTask;
 
-/// <summary>
-/// Applique les resets automatiques lorsque l'horaire prévu est dépassé.
-/// </summary>
+// Applique les resets automatiques quand l'horaire prévu est dépassé.
 public sealed class ChecklistResetService
 {
-    /// <summary>
-    /// Décoche les sections dont le reset théorique est postérieur au dernier reset enregistré.
-    /// </summary>
-    /// <returns>Vrai si la configuration a été modifiée (et sauvegardée).</returns>
+    // Décoche les sections en retard ; retourne vrai si la config a été sauvegardée.
     public bool ApplyDueResets(Configuration configuration, DateTime utcNow)
     {
         var changed = false;
@@ -42,10 +37,7 @@ public sealed class ChecklistResetService
         return changed;
     }
 
-    /// <summary>
-    /// Force le même effet qu'un reset planifié (décoche + dates de frontière à l'instant UTC courant).
-    /// Réservé aux tests en plugin dev.
-    /// </summary>
+    // Même effet qu'un reset planifié, pour les tests en plugin dev.
     public void SimulateReset(Configuration configuration, DateTime utcNow)
     {
         ChecklistTaskEditor.UncheckAllTasks(configuration.DailyTasks, configuration.DailyCompleted);

@@ -5,7 +5,7 @@ using Dalamud.Interface.Windowing;
 
 namespace TodoTask.Windows;
 
-/// <summary>Fenêtre de réglages du plugin (options d'interface).</summary>
+// Fenêtre de réglages du plugin (options d'interface).
 public class ConfigWindow : Window, IDisposable
 {
     private readonly Configuration configuration;

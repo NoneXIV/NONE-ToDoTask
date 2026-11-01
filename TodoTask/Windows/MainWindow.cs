@@ -8,7 +8,7 @@ using Dalamud.Interface.Windowing;
 
 namespace TodoTask.Windows;
 
-/// <summary>Fenêtre principale : checklist quotidienne et hebdomadaire.</summary>
+// Fenêtre principale : checklist quotidienne et hebdomadaire.
 public class MainWindow : Window, IDisposable
 {
     private const string SectionDailyTitle = "Quotidien";

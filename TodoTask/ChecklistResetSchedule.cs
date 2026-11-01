@@ -2,23 +2,19 @@ using System;
 
 namespace TodoTask;
 
-/// <summary>
-/// Calcule les instants de reset prévus (toujours en UTC).
-/// </summary>
+// Calcule les instants de reset prévus (toujours en UTC).
 public static class ChecklistResetSchedule
 {
-    /// <summary>Heure UTC du reset quotidien (15h00).</summary>
+    // Heure UTC du reset quotidien (15h00).
     public const int DailyResetHourUtc = 15;
 
-    /// <summary>Heure UTC du reset hebdomadaire (08h00).</summary>
+    // Heure UTC du reset hebdomadaire (08h00).
     public const int WeeklyResetHourUtc = 8;
 
-    /// <summary>Jour de la semaine du reset hebdomadaire.</summary>
+    // Jour du reset hebdomadaire.
     public const DayOfWeek WeeklyResetDay = DayOfWeek.Tuesday;
 
-    /// <summary>
-    /// Dernier reset quotidien théorique déjà passé par rapport à <paramref name="utcNow"/>.
-    /// </summary>
+    // Dernier reset quotidien théorique déjà passé à utcNow.
     public static DateTime GetLatestDailyResetUtc(DateTime utcNow)
     {
         var utc = EnsureUtc(utcNow);
@@ -26,9 +22,7 @@ public static class ChecklistResetSchedule
         return utc >= todayReset ? todayReset : todayReset.AddDays(-1);
     }
 
-    /// <summary>
-    /// Dernier reset hebdomadaire théorique déjà passé (mardi 08h00 UTC).
-    /// </summary>
+    // Dernier reset hebdomadaire théorique déjà passé (mardi 08h00 UTC).
     public static DateTime GetLatestWeeklyResetUtc(DateTime utcNow)
     {
         var utc = EnsureUtc(utcNow);
@@ -40,7 +34,7 @@ public static class ChecklistResetSchedule
         return utc >= cursor ? cursor : cursor.AddDays(-7);
     }
 
-    /// <summary>Interprète une date lue depuis la config comme UTC.</summary>
+    // Interprète une date lue depuis la config comme UTC.
     public static DateTime? AsUtcOrNull(DateTime? value)
     {
         if (!value.HasValue)

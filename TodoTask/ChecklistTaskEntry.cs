@@ -2,13 +2,13 @@ using System;
 
 namespace TodoTask;
 
-/// <summary>Une tâche persistée dans la configuration (id stable, libellé modifiable).</summary>
+// Tâche persistée dans la configuration (id stable, libellé modifiable).
 [Serializable]
 public sealed class ChecklistTaskEntry
 {
-    /// <summary>Identifiant unique de la tâche (ne change pas au renommage).</summary>
+    // Identifiant unique (inchangé au renommage).
     public string Id { get; set; } = string.Empty;
 
-    /// <summary>Libellé affiché dans l'interface.</summary>
+    // Libellé affiché dans l'interface.
     public string Label { get; set; } = string.Empty;
 }

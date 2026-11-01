@@ -4,13 +4,13 @@ using System.Linq;
 
 namespace TodoTask;
 
-/// <summary>Validation et modifications des listes de tâches (quotidien / hebdomadaire).</summary>
+// Validation et modifications des listes de tâches (quotidien / hebdomadaire).
 public static class ChecklistTaskEditor
 {
-    /// <summary>Longueur maximale d'un libellé de tâche.</summary>
+    // Longueur maximale d'un libellé de tâche.
     public const int MaxLabelLength = 120;
 
-    /// <summary>Ajoute une tâche si le libellé est valide et unique dans la section.</summary>
+    // Ajoute une tâche si le libellé est valide et unique dans la section.
     public static bool TryAddTask(
         List<ChecklistTaskEntry> tasks,
         Dictionary<string, bool> completedByTaskId,
@@ -41,7 +41,7 @@ public static class ChecklistTaskEditor
         return true;
     }
 
-    /// <summary>Renomme une tâche existante.</summary>
+    // Renomme une tâche existante.
     public static bool TryRenameTask(
         List<ChecklistTaskEntry> tasks,
         string taskId,
@@ -71,7 +71,7 @@ public static class ChecklistTaskEditor
         return true;
     }
 
-    /// <summary>Supprime une tâche et son état coché.</summary>
+    // Supprime une tâche et son état coché.
     public static bool TryRemoveTask(
         List<ChecklistTaskEntry> tasks,
         Dictionary<string, bool> completedByTaskId,
@@ -91,7 +91,7 @@ public static class ChecklistTaskEditor
         return true;
     }
 
-    /// <summary>Décoche toutes les tâches d'une section sans modifier la liste.</summary>
+    // Décoche toutes les tâches d'une section sans modifier la liste.
     public static void UncheckAllTasks(
         IReadOnlyList<ChecklistTaskEntry> tasks,
         Dictionary<string, bool> completedByTaskId)
@@ -102,7 +102,7 @@ public static class ChecklistTaskEditor
         }
     }
 
-    /// <summary>Garantit une entrée cochée/non cochée pour chaque tâche de la liste.</summary>
+    // Crée une entrée cochée/non cochée pour chaque tâche si elle manque. Retourne vrai si des clés ont été ajoutées.
     public static bool EnsureCompletionState(
         IReadOnlyList<ChecklistTaskEntry> tasks,
         Dictionary<string, bool> completedByTaskId)

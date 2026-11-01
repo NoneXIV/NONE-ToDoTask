@@ -1,12 +1,12 @@
 namespace TodoTask;
 
-/// <summary>Tâches par défaut utilisées lors de la première initialisation de la configuration.</summary>
+// Tâches par défaut au premier lancement de la configuration.
 public static class ChecklistTaskDefinitions
 {
-    /// <summary>Identifiant stable et libellé d'une tâche modèle.</summary>
+    // Id stable et libellé d'une tâche modèle.
     public readonly record struct ChecklistTaskDefinition(string Id, string Label);
 
-    /// <summary>Tâches quotidiennes initiales.</summary>
+    // Tâches quotidiennes initiales.
     public static readonly ChecklistTaskDefinition[] DailyDefaultTasks =
     [
         new("daily-roulette", "Roulettes"),
@@ -14,7 +14,7 @@ public static class ChecklistTaskDefinitions
         new("daily-treasure", "Cartes aux trésors"),
     ];
 
-    /// <summary>Tâches hebdomadaires initiales.</summary>
+    // Tâches hebdomadaires initiales.
     public static readonly ChecklistTaskDefinition[] WeeklyDefaultTasks =
     [
         new("weekly-raid", "Raid de la semaine"),

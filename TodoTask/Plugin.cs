@@ -8,10 +8,10 @@ using TodoTask.Windows;
 
 namespace TodoTask;
 
-/// <summary>Point d'entrée du plugin Dalamud Todo Task.</summary>
+// Point d'entrée du plugin Dalamud Todo Task.
 public sealed class Plugin : IDalamudPlugin
 {
-    /// <summary>Intervalle entre deux vérifications de reset pendant que le jeu tourne.</summary>
+    // Délai entre deux vérifications de reset pendant que le jeu tourne.
     private const int ResetCheckIntervalSeconds = 30;
 
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
@@ -24,7 +24,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly ChecklistResetService resetService = new();
     private DateTime nextResetCheckUtc = DateTime.MinValue;
 
-    /// <summary>Vrai si le plugin est chargé depuis un emplacement dev Dalamud.</summary>
+    // Vrai si le plugin est chargé en mode dev Dalamud.
     public bool IsDevelopmentPlugin => PluginInterface.IsDev;
 
     public Configuration Configuration { get; init; }
@@ -107,7 +107,7 @@ public sealed class Plugin : IDalamudPlugin
         }
     }
 
-    /// <summary>Déclenche manuellement un reset (visible uniquement en plugin dev).</summary>
+    // Reset manuel pour les tests (plugin dev uniquement).
     public void SimulateScheduledReset()
     {
         var utcNow = DateTime.UtcNow;

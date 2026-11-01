@@ -4,9 +4,7 @@ using System.Collections.Generic;
 
 namespace TodoTask;
 
-/// <summary>
-/// Paramètres du plugin, listes de tâches et état des cases à cocher.
-/// </summary>
+// Paramètres du plugin, listes de tâches et état des cases à cocher.
 [Serializable]
 public class Configuration : IPluginConfiguration
 {
@@ -14,25 +12,25 @@ public class Configuration : IPluginConfiguration
 
     public bool IsConfigWindowMovable { get; set; } = true;
 
-    /// <summary>Tâches de la section quotidienne (ordre d'affichage).</summary>
+    // Tâches quotidiennes (ordre d'affichage).
     public List<ChecklistTaskEntry> DailyTasks { get; set; } = [];
 
-    /// <summary>Tâches de la section hebdomadaire.</summary>
+    // Tâches hebdomadaires.
     public List<ChecklistTaskEntry> WeeklyTasks { get; set; } = [];
 
-    /// <summary>État coché des tâches quotidiennes, clé = id de tâche.</summary>
+    // Coches quotidiennes, clé = id de tâche.
     public Dictionary<string, bool> DailyCompleted { get; set; } = new();
 
-    /// <summary>État coché des tâches hebdomadaires, clé = id de tâche.</summary>
+    // Coches hebdomadaires, clé = id de tâche.
     public Dictionary<string, bool> WeeklyCompleted { get; set; } = new();
 
-    /// <summary>Instant UTC du dernier reset quotidien appliqué (frontière 15h00 UTC).</summary>
+    // Dernier reset quotidien appliqué (frontière 15h00 UTC).
     public DateTime? LastDailyResetAppliedUtc { get; set; }
 
-    /// <summary>Instant UTC du dernier reset hebdomadaire appliqué (mardi 08h00 UTC).</summary>
+    // Dernier reset hebdomadaire appliqué (mardi 08h00 UTC).
     public DateTime? LastWeeklyResetAppliedUtc { get; set; }
 
-    /// <summary>Initialise listes par défaut et clés de complétion manquantes.</summary>
+    // Remplit les listes par défaut et les clés de complétion manquantes. Retourne vrai si la config a changé.
     public bool EnsureTaskStateInitialized()
     {
         DailyTasks ??= [];
@@ -45,7 +43,7 @@ public class Configuration : IPluginConfiguration
         return changed;
     }
 
-    /// <summary>Ajoute une tâche quotidienne et sauvegarde si succès.</summary>
+    // Ajoute une tâche quotidienne et sauvegarde si succès.
     public bool TryAddDailyTask(string rawLabel, out string? errorMessage)
     {
         if (!ChecklistTaskEditor.TryAddTask(DailyTasks, DailyCompleted, rawLabel, "daily", out errorMessage))
@@ -57,7 +55,7 @@ public class Configuration : IPluginConfiguration
         return true;
     }
 
-    /// <summary>Ajoute une tâche hebdomadaire et sauvegarde si succès.</summary>
+    // Ajoute une tâche hebdomadaire et sauvegarde si succès.
     public bool TryAddWeeklyTask(string rawLabel, out string? errorMessage)
     {
         if (!ChecklistTaskEditor.TryAddTask(WeeklyTasks, WeeklyCompleted, rawLabel, "weekly", out errorMessage))
@@ -69,7 +67,7 @@ public class Configuration : IPluginConfiguration
         return true;
     }
 
-    /// <summary>Renomme une tâche quotidienne et sauvegarde si succès.</summary>
+    // Renomme une tâche quotidienne et sauvegarde si succès.
     public bool TryRenameDailyTask(string taskId, string rawLabel, out string? errorMessage)
     {
         if (!ChecklistTaskEditor.TryRenameTask(DailyTasks, taskId, rawLabel, out errorMessage))
@@ -81,7 +79,7 @@ public class Configuration : IPluginConfiguration
         return true;
     }
 
-    /// <summary>Renomme une tâche hebdomadaire et sauvegarde si succès.</summary>
+    // Renomme une tâche hebdomadaire et sauvegarde si succès.
     public bool TryRenameWeeklyTask(string taskId, string rawLabel, out string? errorMessage)
     {
         if (!ChecklistTaskEditor.TryRenameTask(WeeklyTasks, taskId, rawLabel, out errorMessage))
@@ -93,7 +91,7 @@ public class Configuration : IPluginConfiguration
         return true;
     }
 
-    /// <summary>Supprime une tâche quotidienne et sauvegarde si succès.</summary>
+    // Supprime une tâche quotidienne et sauvegarde si succès.
     public bool TryRemoveDailyTask(string taskId, out string? errorMessage)
     {
         if (!ChecklistTaskEditor.TryRemoveTask(DailyTasks, DailyCompleted, taskId, out errorMessage))
@@ -105,7 +103,7 @@ public class Configuration : IPluginConfiguration
         return true;
     }
 
-    /// <summary>Supprime une tâche hebdomadaire et sauvegarde si succès.</summary>
+    // Supprime une tâche hebdomadaire et sauvegarde si succès.
     public bool TryRemoveWeeklyTask(string taskId, out string? errorMessage)
     {
         if (!ChecklistTaskEditor.TryRemoveTask(WeeklyTasks, WeeklyCompleted, taskId, out errorMessage))
@@ -117,7 +115,7 @@ public class Configuration : IPluginConfiguration
         return true;
     }
 
-    /// <summary>Persiste la configuration via Dalamud.</summary>
+    // Enregistre la configuration via Dalamud.
     public void Save()
     {
         Plugin.PluginInterface.SavePluginConfig(this);
