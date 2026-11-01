@@ -10,7 +10,7 @@ namespace TodoTask;
 [Serializable]
 public class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 1;
+    public int Version { get; set; } = 2;
 
     public bool IsConfigWindowMovable { get; set; } = true;
 
@@ -19,6 +19,12 @@ public class Configuration : IPluginConfiguration
 
     /// <summary>État coché des tâches hebdomadaires, clé = id de tâche.</summary>
     public Dictionary<string, bool> WeeklyCompleted { get; set; } = new();
+
+    /// <summary>Instant UTC du dernier reset quotidien appliqué (frontière 15h00 UTC).</summary>
+    public DateTime? LastDailyResetAppliedUtc { get; set; }
+
+    /// <summary>Instant UTC du dernier reset hebdomadaire appliqué (mardi 08h00 UTC).</summary>
+    public DateTime? LastWeeklyResetAppliedUtc { get; set; }
 
     /// <summary>
     /// Garantit une entrée pour chaque tâche connue (nouvelles tâches du code, config ancienne, etc.).

@@ -13,7 +13,9 @@ public class MainWindow : Window, IDisposable
 {
     private const string SectionDailyTitle = "Quotidien";
     private const string SectionWeeklyTitle = "Hebdomadaire";
+    private const string SimulateResetButtonLabel = "Simuler un reset";
 
+    private readonly Plugin plugin;
     private readonly Configuration configuration;
 
     public MainWindow(Plugin plugin)
@@ -25,6 +27,7 @@ public class MainWindow : Window, IDisposable
             MaximumSize = new Vector2(float.MaxValue, float.MaxValue),
         };
 
+        this.plugin = plugin;
         configuration = plugin.Configuration;
     }
 
@@ -41,6 +44,16 @@ public class MainWindow : Window, IDisposable
         DrawTaskSection(SectionDailyTitle, ChecklistTaskDefinitions.Daily, configuration.DailyCompleted);
         ImGuiHelpers.ScaledDummy(12f);
         DrawTaskSection(SectionWeeklyTitle, ChecklistTaskDefinitions.Weekly, configuration.WeeklyCompleted);
+
+        if (plugin.IsDevelopmentPlugin)
+        {
+            ImGuiHelpers.ScaledDummy(12f);
+            ImGui.Separator();
+            if (ImGui.Button(SimulateResetButtonLabel))
+            {
+                plugin.SimulateScheduledReset();
+            }
+        }
     }
 
     /// <summary>Affiche un titre de section et une case par tâche.</summary>
