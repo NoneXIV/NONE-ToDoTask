@@ -9,18 +9,23 @@ using Dalamud.Interface.Windowing;
 
 namespace TodoTask.Windows;
 
-// Fenêtre principale : checklist quotidienne et hebdomadaire.
+// Fenêtre principale : onglets Ma liste et Catalogue.
 public class MainWindow : Window, IDisposable
 {
+    private const string TabBarId = "TodoTaskMainTabs###TodoTaskMainTabs";
+    private const string ChecklistTabTitle = "Ma liste";
+    private const string CatalogTabTitle = "Catalogue";
     private const string SectionDailyTitle = "Quotidien";
     private const string SectionWeeklyTitle = "Hebdomadaire";
     private const string AddPersonalTaskButtonLabel = "Ajouter";
-    private const string AddCatalogTaskButtonLabel = "Ajouter du catalogue";
     private const string DeleteTaskButtonLabel = "X";
     private const string SimulateResetButtonLabel = "Simuler un reset";
+    private const string CatalogSearchHint = "Rechercher…";
+    private const string InMyListCheckboxLabel = "Dans ma liste";
     private const string ConfirmDeletePopupId = "TodoTaskConfirmDelete###TodoTaskConfirmDelete";
     private const string ConfirmDeleteYesLabel = "Supprimer";
     private const string ConfirmDeleteNoLabel = "Annuler";
+    private const int CatalogSearchMaxLength = 120;
 
     private readonly Plugin plugin;
     private readonly Configuration configuration;
@@ -28,12 +33,12 @@ public class MainWindow : Window, IDisposable
 
     private string dailyPersonalTaskInput = string.Empty;
     private string weeklyPersonalTaskInput = string.Empty;
+    private string catalogSearchQuery = string.Empty;
     private string? dailyAddErrorMessage;
     private string? weeklyAddErrorMessage;
+    private string? catalogTabErrorMessage;
     private string? dailyRenameErrorMessage;
     private string? weeklyRenameErrorMessage;
-    private int dailyCatalogPickerIndex;
-    private int weeklyCatalogPickerIndex;
 
     private ChecklistDisplayTask? pendingDeleteTask;
     private string pendingDeleteTaskLabel = string.Empty;
@@ -56,6 +61,30 @@ public class MainWindow : Window, IDisposable
 
     public override void Draw()
     {
+        DrawDeleteConfirmationPopup();
+
+        if (!ImGui.BeginTabBar(TabBarId))
+        {
+            return;
+        }
+
+        if (ImGui.BeginTabItem(ChecklistTabTitle))
+        {
+            DrawChecklistTab();
+            ImGui.EndTabItem();
+        }
+
+        if (ImGui.BeginTabItem(CatalogTabTitle))
+        {
+            DrawCatalogTab();
+            ImGui.EndTabItem();
+        }
+
+        ImGui.EndTabBar();
+    }
+
+    private void DrawChecklistTab()
+    {
         using var scrollArea = ImRaii.Child("ChecklistScroll", Vector2.Zero, true);
         if (!scrollArea.Success)
         {
@@ -75,8 +104,68 @@ public class MainWindow : Window, IDisposable
                 plugin.SimulateScheduledReset();
             }
         }
+    }
 
-        DrawDeleteConfirmationPopup();
+    private void DrawCatalogTab()
+    {
+        using var scrollArea = ImRaii.Child("CatalogScroll", Vector2.Zero, true);
+        if (!scrollArea.Success)
+        {
+            return;
+        }
+
+        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+        ImGui.InputTextWithHint("##CatalogSearch", CatalogSearchHint, ref catalogSearchQuery, CatalogSearchMaxLength);
+        ImGui.Spacing();
+
+        var hasAnyTask = false;
+        foreach (var categoryGroup in checklist.GetCatalogTasksGroupedByCategory(catalogSearchQuery))
+        {
+            hasAnyTask = true;
+            ImGui.Text(categoryGroup.Key);
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            foreach (var task in categoryGroup)
+            {
+                DrawCatalogTaskRow(task);
+            }
+
+            ImGui.Spacing();
+        }
+
+        if (!hasAnyTask)
+        {
+            ImGui.TextUnformatted("Aucune tâche ne correspond à la recherche.");
+        }
+
+        if (!string.IsNullOrEmpty(catalogTabErrorMessage))
+        {
+            ImGui.TextColored(new Vector4(1f, 0.4f, 0.4f, 1f), catalogTabErrorMessage);
+        }
+    }
+
+    private void DrawCatalogTaskRow(TaskCatalogItem task)
+    {
+        var inMyList = checklist.IsCatalogTaskInList(configuration, task.Id);
+        if (ImGui.Checkbox($"{InMyListCheckboxLabel}##catalog_{task.Id}", ref inMyList))
+        {
+            if (checklist.TrySetCatalogTaskInList(configuration, task.Id, inMyList, out var errorMessage))
+            {
+                catalogTabErrorMessage = null;
+            }
+            else
+            {
+                catalogTabErrorMessage = errorMessage;
+            }
+        }
+
+        ImGui.SameLine();
+        ImGui.TextUnformatted($"{task.Nom} ({task.Reset})");
+        if (!string.IsNullOrWhiteSpace(task.Description) && ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip(task.Description);
+        }
     }
 
     private void DrawTaskSection(TaskResetKind resetKind, string sectionTitle)
@@ -88,7 +177,6 @@ public class MainWindow : Window, IDisposable
         ImGui.Separator();
         ImGui.Spacing();
 
-        DrawCatalogAddRow(resetKind);
         DrawPersonalAddRow(resetKind);
 
         foreach (var task in tasks)
@@ -101,54 +189,6 @@ public class MainWindow : Window, IDisposable
         {
             ImGui.TextColored(new Vector4(1f, 0.4f, 0.4f, 1f), renameError);
         }
-    }
-
-    private void DrawCatalogAddRow(TaskResetKind resetKind)
-    {
-        var availableTasks = checklist.GetAvailableCatalogTasks(configuration, resetKind).ToList();
-        if (availableTasks.Count == 0)
-        {
-            return;
-        }
-
-        ref var pickerIndex = ref GetCatalogPickerIndex(resetKind);
-        if (pickerIndex >= availableTasks.Count)
-        {
-            pickerIndex = 0;
-        }
-
-        var preview = availableTasks[pickerIndex].Nom;
-        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X * 0.55f);
-        if (ImGui.BeginCombo($"##CatalogPicker{resetKind}", preview))
-        {
-            for (var index = 0; index < availableTasks.Count; index++)
-            {
-                var task = availableTasks[index];
-                if (ImGui.Selectable($"{task.Nom} ({task.Categorie})##{task.Id}", index == pickerIndex))
-                {
-                    pickerIndex = index;
-                }
-            }
-
-            ImGui.EndCombo();
-        }
-
-        ImGui.SameLine();
-        if (ImGui.Button($"{AddCatalogTaskButtonLabel}##{resetKind}"))
-        {
-            ref var addError = ref GetAddErrorMessage(resetKind);
-            if (checklist.TryAddCatalogTask(configuration, availableTasks[pickerIndex].Id, out var errorMessage))
-            {
-                addError = null;
-                pickerIndex = 0;
-            }
-            else
-            {
-                addError = errorMessage;
-            }
-        }
-
-        ImGui.Spacing();
     }
 
     private void DrawPersonalAddRow(TaskResetKind resetKind)
@@ -295,16 +335,6 @@ public class MainWindow : Window, IDisposable
         }
 
         return ref weeklyAddErrorMessage;
-    }
-
-    private ref int GetCatalogPickerIndex(TaskResetKind resetKind)
-    {
-        if (resetKind == TaskResetKind.Quotidien)
-        {
-            return ref dailyCatalogPickerIndex;
-        }
-
-        return ref weeklyCatalogPickerIndex;
     }
 
     private string? GetRenameErrorMessage(TaskResetKind resetKind)

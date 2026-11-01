@@ -86,6 +86,66 @@ public sealed class UserChecklistService
         return true;
     }
 
+    // Ajoute ou retire une tâche catalogue de la liste utilisateur (onglet Catalogue).
+    public bool TrySetCatalogTaskInList(
+        Configuration configuration,
+        string catalogTaskId,
+        bool inList,
+        out string? errorMessage)
+    {
+        if (inList)
+        {
+            return TryAddCatalogTask(configuration, catalogTaskId, out errorMessage);
+        }
+
+        if (!configuration.SelectedCatalogTaskIds.Contains(catalogTaskId))
+        {
+            errorMessage = null;
+            return true;
+        }
+
+        if (!configuration.SelectedCatalogTaskIds.Remove(catalogTaskId))
+        {
+            errorMessage = "Tâche catalogue introuvable.";
+            return false;
+        }
+
+        RemoveCompletionKey(configuration, catalogTaskId);
+        configuration.Save();
+        errorMessage = null;
+        return true;
+    }
+
+    public bool IsCatalogTaskInList(Configuration configuration, string catalogTaskId)
+    {
+        return configuration.SelectedCatalogTaskIds.Contains(catalogTaskId);
+    }
+
+    // Tâches du fichier JSON filtrées par recherche, groupées par catégorie.
+    public IEnumerable<IGrouping<string, TaskCatalogItem>> GetCatalogTasksGroupedByCategory(string searchQuery)
+    {
+        IEnumerable<TaskCatalogItem> tasks = catalog.AllTasks;
+
+        var trimmedQuery = searchQuery.Trim();
+        if (trimmedQuery.Length > 0)
+        {
+            tasks = tasks.Where(task => MatchesCatalogSearch(task, trimmedQuery));
+        }
+
+        return tasks
+            .OrderBy(task => task.Categorie, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(task => task.Nom, StringComparer.OrdinalIgnoreCase)
+            .GroupBy(task => task.Categorie, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static bool MatchesCatalogSearch(TaskCatalogItem task, string query)
+    {
+        return task.Nom.Contains(query, StringComparison.OrdinalIgnoreCase)
+               || task.Categorie.Contains(query, StringComparison.OrdinalIgnoreCase)
+               || task.Description.Contains(query, StringComparison.OrdinalIgnoreCase)
+               || task.Id.Contains(query, StringComparison.OrdinalIgnoreCase);
+    }
+
     public bool TryAddPersonalTask(
         Configuration configuration,
         TaskResetKind resetKind,
