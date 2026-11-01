@@ -1,23 +1,21 @@
 namespace TodoTask;
 
-/// <summary>
-/// Liste fixe des tâches affichées à l'étape 1 (pas d'ajout dynamique pour l'instant).
-/// </summary>
+/// <summary>Tâches par défaut utilisées lors de la première initialisation de la configuration.</summary>
 public static class ChecklistTaskDefinitions
 {
-    /// <summary>Identifiant stable d'une entrée de checklist (persisté dans la configuration).</summary>
+    /// <summary>Identifiant stable et libellé d'une tâche modèle.</summary>
     public readonly record struct ChecklistTaskDefinition(string Id, string Label);
 
-    /// <summary>Tâches de la section quotidienne.</summary>
-    public static readonly ChecklistTaskDefinition[] Daily =
+    /// <summary>Tâches quotidiennes initiales.</summary>
+    public static readonly ChecklistTaskDefinition[] DailyDefaultTasks =
     [
         new("daily-roulette", "Roulettes"),
         new("daily-beast-tribe", "Quêtes tribus"),
         new("daily-treasure", "Cartes aux trésors"),
     ];
 
-    /// <summary>Tâches de la section hebdomadaire.</summary>
-    public static readonly ChecklistTaskDefinition[] Weekly =
+    /// <summary>Tâches hebdomadaires initiales.</summary>
+    public static readonly ChecklistTaskDefinition[] WeeklyDefaultTasks =
     [
         new("weekly-raid", "Raid de la semaine"),
         new("weekly-tome", "Cap tomes"),

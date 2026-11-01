@@ -5,16 +5,22 @@ using System.Collections.Generic;
 namespace TodoTask;
 
 /// <summary>
-/// Paramètres du plugin et état des cases à cocher (quotidien / hebdomadaire).
+/// Paramètres du plugin, listes de tâches et état des cases à cocher.
 /// </summary>
 [Serializable]
 public class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 2;
+    public int Version { get; set; } = 3;
 
     public bool IsConfigWindowMovable { get; set; } = true;
 
-    /// <summary>État coché des tâches quotidiennes, clé = <see cref="ChecklistTaskDefinitions.ChecklistTaskDefinition.Id"/>.</summary>
+    /// <summary>Tâches de la section quotidienne (ordre d'affichage).</summary>
+    public List<ChecklistTaskEntry> DailyTasks { get; set; } = [];
+
+    /// <summary>Tâches de la section hebdomadaire.</summary>
+    public List<ChecklistTaskEntry> WeeklyTasks { get; set; } = [];
+
+    /// <summary>État coché des tâches quotidiennes, clé = id de tâche.</summary>
     public Dictionary<string, bool> DailyCompleted { get; set; } = new();
 
     /// <summary>État coché des tâches hebdomadaires, clé = id de tâche.</summary>
@@ -26,15 +32,89 @@ public class Configuration : IPluginConfiguration
     /// <summary>Instant UTC du dernier reset hebdomadaire appliqué (mardi 08h00 UTC).</summary>
     public DateTime? LastWeeklyResetAppliedUtc { get; set; }
 
-    /// <summary>
-    /// Garantit une entrée pour chaque tâche connue (nouvelles tâches du code, config ancienne, etc.).
-    /// </summary>
-    /// <returns>Vrai si des clés manquantes ont été ajoutées (persiste alors la config).</returns>
+    /// <summary>Initialise listes par défaut et clés de complétion manquantes.</summary>
     public bool EnsureTaskStateInitialized()
     {
-        var changed = EnsureSection(DailyCompleted, ChecklistTaskDefinitions.Daily);
-        changed |= EnsureSection(WeeklyCompleted, ChecklistTaskDefinitions.Weekly);
+        DailyTasks ??= [];
+        WeeklyTasks ??= [];
+
+        var changed = SeedDefaultTasksIfEmpty(DailyTasks, ChecklistTaskDefinitions.DailyDefaultTasks);
+        changed |= SeedDefaultTasksIfEmpty(WeeklyTasks, ChecklistTaskDefinitions.WeeklyDefaultTasks);
+        changed |= ChecklistTaskEditor.EnsureCompletionState(DailyTasks, DailyCompleted);
+        changed |= ChecklistTaskEditor.EnsureCompletionState(WeeklyTasks, WeeklyCompleted);
         return changed;
+    }
+
+    /// <summary>Ajoute une tâche quotidienne et sauvegarde si succès.</summary>
+    public bool TryAddDailyTask(string rawLabel, out string? errorMessage)
+    {
+        if (!ChecklistTaskEditor.TryAddTask(DailyTasks, DailyCompleted, rawLabel, "daily", out errorMessage))
+        {
+            return false;
+        }
+
+        Save();
+        return true;
+    }
+
+    /// <summary>Ajoute une tâche hebdomadaire et sauvegarde si succès.</summary>
+    public bool TryAddWeeklyTask(string rawLabel, out string? errorMessage)
+    {
+        if (!ChecklistTaskEditor.TryAddTask(WeeklyTasks, WeeklyCompleted, rawLabel, "weekly", out errorMessage))
+        {
+            return false;
+        }
+
+        Save();
+        return true;
+    }
+
+    /// <summary>Renomme une tâche quotidienne et sauvegarde si succès.</summary>
+    public bool TryRenameDailyTask(string taskId, string rawLabel, out string? errorMessage)
+    {
+        if (!ChecklistTaskEditor.TryRenameTask(DailyTasks, taskId, rawLabel, out errorMessage))
+        {
+            return false;
+        }
+
+        Save();
+        return true;
+    }
+
+    /// <summary>Renomme une tâche hebdomadaire et sauvegarde si succès.</summary>
+    public bool TryRenameWeeklyTask(string taskId, string rawLabel, out string? errorMessage)
+    {
+        if (!ChecklistTaskEditor.TryRenameTask(WeeklyTasks, taskId, rawLabel, out errorMessage))
+        {
+            return false;
+        }
+
+        Save();
+        return true;
+    }
+
+    /// <summary>Supprime une tâche quotidienne et sauvegarde si succès.</summary>
+    public bool TryRemoveDailyTask(string taskId, out string? errorMessage)
+    {
+        if (!ChecklistTaskEditor.TryRemoveTask(DailyTasks, DailyCompleted, taskId, out errorMessage))
+        {
+            return false;
+        }
+
+        Save();
+        return true;
+    }
+
+    /// <summary>Supprime une tâche hebdomadaire et sauvegarde si succès.</summary>
+    public bool TryRemoveWeeklyTask(string taskId, out string? errorMessage)
+    {
+        if (!ChecklistTaskEditor.TryRemoveTask(WeeklyTasks, WeeklyCompleted, taskId, out errorMessage))
+        {
+            return false;
+        }
+
+        Save();
+        return true;
     }
 
     /// <summary>Persiste la configuration via Dalamud.</summary>
@@ -43,20 +123,20 @@ public class Configuration : IPluginConfiguration
         Plugin.PluginInterface.SavePluginConfig(this);
     }
 
-    private static bool EnsureSection(
-        Dictionary<string, bool> completedByTaskId,
-        ChecklistTaskDefinitions.ChecklistTaskDefinition[] tasks)
+    private static bool SeedDefaultTasksIfEmpty(
+        List<ChecklistTaskEntry> tasks,
+        ChecklistTaskDefinitions.ChecklistTaskDefinition[] defaults)
     {
-        var changed = false;
-        foreach (var task in tasks)
+        if (tasks.Count > 0)
         {
-            if (!completedByTaskId.ContainsKey(task.Id))
-            {
-                completedByTaskId[task.Id] = false;
-                changed = true;
-            }
+            return false;
         }
 
-        return changed;
+        foreach (var task in defaults)
+        {
+            tasks.Add(new ChecklistTaskEntry { Id = task.Id, Label = task.Label });
+        }
+
+        return true;
     }
 }

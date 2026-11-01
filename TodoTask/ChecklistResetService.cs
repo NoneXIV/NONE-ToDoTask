@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 
 namespace TodoTask;
 
@@ -20,7 +19,7 @@ public sealed class ChecklistResetService
 
         if (lastDailyReset is null || lastDailyReset.Value < latestDailyReset)
         {
-            UncheckAll(configuration.DailyCompleted, ChecklistTaskDefinitions.Daily);
+            ChecklistTaskEditor.UncheckAllTasks(configuration.DailyTasks, configuration.DailyCompleted);
             configuration.LastDailyResetAppliedUtc = latestDailyReset;
             changed = true;
         }
@@ -30,7 +29,7 @@ public sealed class ChecklistResetService
 
         if (lastWeeklyReset is null || lastWeeklyReset.Value < latestWeeklyReset)
         {
-            UncheckAll(configuration.WeeklyCompleted, ChecklistTaskDefinitions.Weekly);
+            ChecklistTaskEditor.UncheckAllTasks(configuration.WeeklyTasks, configuration.WeeklyCompleted);
             configuration.LastWeeklyResetAppliedUtc = latestWeeklyReset;
             changed = true;
         }
@@ -49,20 +48,10 @@ public sealed class ChecklistResetService
     /// </summary>
     public void SimulateReset(Configuration configuration, DateTime utcNow)
     {
-        UncheckAll(configuration.DailyCompleted, ChecklistTaskDefinitions.Daily);
-        UncheckAll(configuration.WeeklyCompleted, ChecklistTaskDefinitions.Weekly);
+        ChecklistTaskEditor.UncheckAllTasks(configuration.DailyTasks, configuration.DailyCompleted);
+        ChecklistTaskEditor.UncheckAllTasks(configuration.WeeklyTasks, configuration.WeeklyCompleted);
         configuration.LastDailyResetAppliedUtc = ChecklistResetSchedule.GetLatestDailyResetUtc(utcNow);
         configuration.LastWeeklyResetAppliedUtc = ChecklistResetSchedule.GetLatestWeeklyResetUtc(utcNow);
         configuration.Save();
-    }
-
-    private static void UncheckAll(
-        Dictionary<string, bool> completedByTaskId,
-        ChecklistTaskDefinitions.ChecklistTaskDefinition[] tasks)
-    {
-        foreach (var task in tasks)
-        {
-            completedByTaskId[task.Id] = false;
-        }
     }
 }
