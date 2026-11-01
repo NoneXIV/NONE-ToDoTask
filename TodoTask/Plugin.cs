@@ -11,7 +11,6 @@ namespace TodoTask;
 // Point d'entrée du plugin Dalamud Todo Task.
 public sealed class Plugin : IDalamudPlugin
 {
-    // Délai entre deux vérifications de reset pendant que le jeu tourne.
     private const int ResetCheckIntervalSeconds = 30;
 
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
@@ -21,10 +20,13 @@ public sealed class Plugin : IDalamudPlugin
 
     private const string CommandName = "/todotask";
 
-    private readonly ChecklistResetService resetService = new();
+    private readonly ChecklistResetService resetService;
     private DateTime nextResetCheckUtc = DateTime.MinValue;
 
-    // Vrai si le plugin est chargé en mode dev Dalamud.
+    public TaskCatalog TaskCatalog { get; }
+
+    public UserChecklistService UserChecklist { get; }
+
     public bool IsDevelopmentPlugin => PluginInterface.IsDev;
 
     public Configuration Configuration { get; init; }
@@ -35,8 +37,15 @@ public sealed class Plugin : IDalamudPlugin
 
     public Plugin()
     {
+        var pluginDirectory = PluginInterface.AssemblyLocation.Directory?.FullName
+                              ?? throw new InvalidOperationException("Impossible de déterminer le dossier du plugin.");
+
+        TaskCatalog = TaskCatalog.LoadFromPluginDirectory(pluginDirectory, Log);
+        UserChecklist = new UserChecklistService(TaskCatalog);
+        resetService = new ChecklistResetService(UserChecklist);
+
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
-        if (Configuration.EnsureTaskStateInitialized())
+        if (Configuration.EnsureTaskStateInitialized(TaskCatalog, UserChecklist))
         {
             Configuration.Save();
         }
@@ -107,7 +116,6 @@ public sealed class Plugin : IDalamudPlugin
         }
     }
 
-    // Reset manuel pour les tests (plugin dev uniquement).
     public void SimulateScheduledReset()
     {
         var utcNow = DateTime.UtcNow;

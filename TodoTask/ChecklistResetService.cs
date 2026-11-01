@@ -5,6 +5,13 @@ namespace TodoTask;
 // Applique les resets automatiques quand l'horaire prévu est dépassé.
 public sealed class ChecklistResetService
 {
+    private readonly UserChecklistService checklist;
+
+    public ChecklistResetService(UserChecklistService checklist)
+    {
+        this.checklist = checklist;
+    }
+
     // Décoche les sections en retard ; retourne vrai si la config a été sauvegardée.
     public bool ApplyDueResets(Configuration configuration, DateTime utcNow)
     {
@@ -14,7 +21,7 @@ public sealed class ChecklistResetService
 
         if (lastDailyReset is null || lastDailyReset.Value < latestDailyReset)
         {
-            ChecklistTaskEditor.UncheckAllTasks(configuration.DailyTasks, configuration.DailyCompleted);
+            checklist.UncheckAllTasks(configuration, TaskResetKind.Quotidien);
             configuration.LastDailyResetAppliedUtc = latestDailyReset;
             changed = true;
         }
@@ -24,7 +31,7 @@ public sealed class ChecklistResetService
 
         if (lastWeeklyReset is null || lastWeeklyReset.Value < latestWeeklyReset)
         {
-            ChecklistTaskEditor.UncheckAllTasks(configuration.WeeklyTasks, configuration.WeeklyCompleted);
+            checklist.UncheckAllTasks(configuration, TaskResetKind.Hebdomadaire);
             configuration.LastWeeklyResetAppliedUtc = latestWeeklyReset;
             changed = true;
         }
@@ -40,8 +47,8 @@ public sealed class ChecklistResetService
     // Même effet qu'un reset planifié, pour les tests en plugin dev.
     public void SimulateReset(Configuration configuration, DateTime utcNow)
     {
-        ChecklistTaskEditor.UncheckAllTasks(configuration.DailyTasks, configuration.DailyCompleted);
-        ChecklistTaskEditor.UncheckAllTasks(configuration.WeeklyTasks, configuration.WeeklyCompleted);
+        checklist.UncheckAllTasks(configuration, TaskResetKind.Quotidien);
+        checklist.UncheckAllTasks(configuration, TaskResetKind.Hebdomadaire);
         configuration.LastDailyResetAppliedUtc = ChecklistResetSchedule.GetLatestDailyResetUtc(utcNow);
         configuration.LastWeeklyResetAppliedUtc = ChecklistResetSchedule.GetLatestWeeklyResetUtc(utcNow);
         configuration.Save();

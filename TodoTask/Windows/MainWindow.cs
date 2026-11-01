@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility;
@@ -13,7 +14,8 @@ public class MainWindow : Window, IDisposable
 {
     private const string SectionDailyTitle = "Quotidien";
     private const string SectionWeeklyTitle = "Hebdomadaire";
-    private const string AddTaskButtonLabel = "Ajouter";
+    private const string AddPersonalTaskButtonLabel = "Ajouter";
+    private const string AddCatalogTaskButtonLabel = "Ajouter du catalogue";
     private const string DeleteTaskButtonLabel = "X";
     private const string SimulateResetButtonLabel = "Simuler un reset";
     private const string ConfirmDeletePopupId = "TodoTaskConfirmDelete###TodoTaskConfirmDelete";
@@ -22,16 +24,18 @@ public class MainWindow : Window, IDisposable
 
     private readonly Plugin plugin;
     private readonly Configuration configuration;
+    private readonly UserChecklistService checklist;
 
-    private string dailyNewTaskInput = string.Empty;
-    private string weeklyNewTaskInput = string.Empty;
+    private string dailyPersonalTaskInput = string.Empty;
+    private string weeklyPersonalTaskInput = string.Empty;
     private string? dailyAddErrorMessage;
     private string? weeklyAddErrorMessage;
     private string? dailyRenameErrorMessage;
     private string? weeklyRenameErrorMessage;
+    private int dailyCatalogPickerIndex;
+    private int weeklyCatalogPickerIndex;
 
-    private ChecklistSectionKind? pendingDeleteSection;
-    private string? pendingDeleteTaskId;
+    private ChecklistDisplayTask? pendingDeleteTask;
     private string pendingDeleteTaskLabel = string.Empty;
 
     public MainWindow(Plugin plugin)
@@ -39,12 +43,13 @@ public class MainWindow : Window, IDisposable
     {
         SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = new Vector2(360, 280),
+            MinimumSize = new Vector2(400, 300),
             MaximumSize = new Vector2(float.MaxValue, float.MaxValue),
         };
 
         this.plugin = plugin;
         configuration = plugin.Configuration;
+        checklist = plugin.UserChecklist;
     }
 
     public void Dispose() { }
@@ -57,9 +62,9 @@ public class MainWindow : Window, IDisposable
             return;
         }
 
-        DrawTaskSection(ChecklistSectionKind.Daily, SectionDailyTitle);
+        DrawTaskSection(TaskResetKind.Quotidien, SectionDailyTitle);
         ImGuiHelpers.ScaledDummy(12f);
-        DrawTaskSection(ChecklistSectionKind.Weekly, SectionWeeklyTitle);
+        DrawTaskSection(TaskResetKind.Hebdomadaire, SectionWeeklyTitle);
 
         if (plugin.IsDevelopmentPlugin)
         {
@@ -74,73 +79,91 @@ public class MainWindow : Window, IDisposable
         DrawDeleteConfirmationPopup();
     }
 
-    private void DrawTaskSection(ChecklistSectionKind section, string sectionTitle)
+    private void DrawTaskSection(TaskResetKind resetKind, string sectionTitle)
     {
-        var tasks = GetTasks(section);
-        var completedByTaskId = GetCompletedMap(section);
+        var tasks = checklist.GetDisplayTasks(configuration, resetKind);
+        var completedByTaskId = GetCompletedMap(resetKind);
 
         ImGui.Text(sectionTitle);
         ImGui.Separator();
         ImGui.Spacing();
 
-        DrawAddTaskRow(section);
+        DrawCatalogAddRow(resetKind);
+        DrawPersonalAddRow(resetKind);
 
         foreach (var task in tasks)
         {
-            DrawTaskRow(section, task, completedByTaskId);
+            DrawTaskRow(resetKind, task, completedByTaskId);
         }
 
-        if (!string.IsNullOrEmpty(GetRenameErrorMessage(section)))
+        var renameError = GetRenameErrorMessage(resetKind);
+        if (!string.IsNullOrEmpty(renameError))
         {
-            ImGui.TextColored(new Vector4(1f, 0.4f, 0.4f, 1f), GetRenameErrorMessage(section));
-        }
-    }
-
-    private string? GetRenameErrorMessage(ChecklistSectionKind section)
-    {
-        return section switch
-        {
-            ChecklistSectionKind.Daily => dailyRenameErrorMessage,
-            ChecklistSectionKind.Weekly => weeklyRenameErrorMessage,
-            _ => null,
-        };
-    }
-
-    private void SetRenameErrorMessage(ChecklistSectionKind section, string? message)
-    {
-        switch (section)
-        {
-            case ChecklistSectionKind.Daily:
-                dailyRenameErrorMessage = message;
-                break;
-            case ChecklistSectionKind.Weekly:
-                weeklyRenameErrorMessage = message;
-                break;
+            ImGui.TextColored(new Vector4(1f, 0.4f, 0.4f, 1f), renameError);
         }
     }
 
-    private void DrawAddTaskRow(ChecklistSectionKind section)
+    private void DrawCatalogAddRow(TaskResetKind resetKind)
     {
-        if (section == ChecklistSectionKind.Daily)
+        var availableTasks = checklist.GetAvailableCatalogTasks(configuration, resetKind).ToList();
+        if (availableTasks.Count == 0)
         {
-            DrawAddTaskRowCore(section, ref dailyNewTaskInput, ref dailyAddErrorMessage);
+            return;
         }
-        else
-        {
-            DrawAddTaskRowCore(section, ref weeklyNewTaskInput, ref weeklyAddErrorMessage);
-        }
-    }
 
-    private void DrawAddTaskRowCore(ChecklistSectionKind section, ref string input, ref string? addError)
-    {
-        var addButtonWidth = ImGui.CalcTextSize(AddTaskButtonLabel).X + (ImGui.GetStyle().FramePadding.X * 2f);
-        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - addButtonWidth - ImGui.GetStyle().ItemSpacing.X);
-        ImGui.InputTextWithHint($"##NewTask{section}", "Nouvelle tâche…", ref input, ChecklistTaskEditor.MaxLabelLength);
+        ref var pickerIndex = ref GetCatalogPickerIndex(resetKind);
+        if (pickerIndex >= availableTasks.Count)
+        {
+            pickerIndex = 0;
+        }
+
+        var preview = availableTasks[pickerIndex].Nom;
+        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X * 0.55f);
+        if (ImGui.BeginCombo($"##CatalogPicker{resetKind}", preview))
+        {
+            for (var index = 0; index < availableTasks.Count; index++)
+            {
+                var task = availableTasks[index];
+                if (ImGui.Selectable($"{task.Nom} ({task.Categorie})##{task.Id}", index == pickerIndex))
+                {
+                    pickerIndex = index;
+                }
+            }
+
+            ImGui.EndCombo();
+        }
 
         ImGui.SameLine();
-        if (ImGui.Button($"{AddTaskButtonLabel}##{section}"))
+        if (ImGui.Button($"{AddCatalogTaskButtonLabel}##{resetKind}"))
         {
-            if (TryAddTask(section, input, out var errorMessage))
+            ref var addError = ref GetAddErrorMessage(resetKind);
+            if (checklist.TryAddCatalogTask(configuration, availableTasks[pickerIndex].Id, out var errorMessage))
+            {
+                addError = null;
+                pickerIndex = 0;
+            }
+            else
+            {
+                addError = errorMessage;
+            }
+        }
+
+        ImGui.Spacing();
+    }
+
+    private void DrawPersonalAddRow(TaskResetKind resetKind)
+    {
+        ref var input = ref GetPersonalTaskInput(resetKind);
+        ref var addError = ref GetAddErrorMessage(resetKind);
+
+        var addButtonWidth = ImGui.CalcTextSize(AddPersonalTaskButtonLabel).X + (ImGui.GetStyle().FramePadding.X * 2f);
+        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - addButtonWidth - ImGui.GetStyle().ItemSpacing.X);
+        ImGui.InputTextWithHint($"##PersonalTask{resetKind}", "Tâche perso…", ref input, ChecklistTaskEditor.MaxLabelLength);
+
+        ImGui.SameLine();
+        if (ImGui.Button($"{AddPersonalTaskButtonLabel}##personal_{resetKind}"))
+        {
+            if (checklist.TryAddPersonalTask(configuration, resetKind, input, out var errorMessage))
             {
                 input = string.Empty;
                 addError = null;
@@ -160,8 +183,8 @@ public class MainWindow : Window, IDisposable
     }
 
     private void DrawTaskRow(
-        ChecklistSectionKind section,
-        ChecklistTaskEntry task,
+        TaskResetKind resetKind,
+        ChecklistDisplayTask task,
         Dictionary<string, bool> completedByTaskId)
     {
         var isCompleted = completedByTaskId[task.Id];
@@ -173,28 +196,40 @@ public class MainWindow : Window, IDisposable
 
         ImGui.SameLine();
 
-        var labelBuffer = task.Label;
         var deleteButtonWidth = ImGui.CalcTextSize(DeleteTaskButtonLabel).X + (ImGui.GetStyle().FramePadding.X * 2f);
         var labelWidth = ImGui.GetContentRegionAvail().X - deleteButtonWidth - ImGui.GetStyle().ItemSpacing.X;
-        ImGui.SetNextItemWidth(labelWidth);
-        ImGui.InputText($"##label_{task.Id}", ref labelBuffer, ChecklistTaskEditor.MaxLabelLength);
-        if (ImGui.IsItemDeactivatedAfterEdit())
+
+        if (task.CanRename)
         {
-            if (TryRenameTask(section, task.Id, labelBuffer, out var errorMessage))
+            var labelBuffer = task.Label;
+            ImGui.SetNextItemWidth(labelWidth);
+            ImGui.InputText($"##label_{task.Id}", ref labelBuffer, ChecklistTaskEditor.MaxLabelLength);
+            if (ImGui.IsItemDeactivatedAfterEdit())
             {
-                SetRenameErrorMessage(section, null);
+                if (checklist.TryRenamePersonalTask(configuration, resetKind, task.Id, labelBuffer, out var errorMessage))
+                {
+                    SetRenameErrorMessage(resetKind, null);
+                }
+                else
+                {
+                    SetRenameErrorMessage(resetKind, errorMessage);
+                }
             }
-            else
+        }
+        else
+        {
+            ImGui.SetNextItemWidth(labelWidth);
+            ImGui.TextUnformatted(task.Label);
+            if (!string.IsNullOrWhiteSpace(task.Description) && ImGui.IsItemHovered())
             {
-                SetRenameErrorMessage(section, errorMessage);
+                ImGui.SetTooltip(task.Description);
             }
         }
 
         ImGui.SameLine();
         if (ImGui.Button($"{DeleteTaskButtonLabel}##del_{task.Id}"))
         {
-            pendingDeleteSection = section;
-            pendingDeleteTaskId = task.Id;
+            pendingDeleteTask = task;
             pendingDeleteTaskLabel = task.Label;
             ImGui.OpenPopup(ConfirmDeletePopupId);
         }
@@ -202,8 +237,7 @@ public class MainWindow : Window, IDisposable
 
     private void DrawDeleteConfirmationPopup()
     {
-        var isOpen = ImGui.BeginPopupModal(ConfirmDeletePopupId, ImGuiWindowFlags.AlwaysAutoResize);
-        if (!isOpen)
+        if (!ImGui.BeginPopupModal(ConfirmDeletePopupId, ImGuiWindowFlags.AlwaysAutoResize))
         {
             return;
         }
@@ -212,13 +246,12 @@ public class MainWindow : Window, IDisposable
 
         if (ImGui.Button(ConfirmDeleteYesLabel))
         {
-            if (pendingDeleteSection is { } section && pendingDeleteTaskId is not null)
+            if (pendingDeleteTask is not null)
             {
-                TryRemoveTask(section, pendingDeleteTaskId, out _);
+                checklist.TryRemoveTask(configuration, pendingDeleteTask, out _);
             }
 
-            pendingDeleteSection = null;
-            pendingDeleteTaskId = null;
+            pendingDeleteTask = null;
             pendingDeleteTaskLabel = string.Empty;
             ImGui.CloseCurrentPopup();
         }
@@ -226,8 +259,7 @@ public class MainWindow : Window, IDisposable
         ImGui.SameLine();
         if (ImGui.Button(ConfirmDeleteNoLabel))
         {
-            pendingDeleteSection = null;
-            pendingDeleteTaskId = null;
+            pendingDeleteTask = null;
             pendingDeleteTaskLabel = string.Empty;
             ImGui.CloseCurrentPopup();
         }
@@ -235,59 +267,66 @@ public class MainWindow : Window, IDisposable
         ImGui.EndPopup();
     }
 
-    private List<ChecklistTaskEntry> GetTasks(ChecklistSectionKind section)
+    private Dictionary<string, bool> GetCompletedMap(TaskResetKind resetKind)
     {
-        return section switch
+        return resetKind switch
         {
-            ChecklistSectionKind.Daily => configuration.DailyTasks,
-            ChecklistSectionKind.Weekly => configuration.WeeklyTasks,
-            _ => throw new ArgumentOutOfRangeException(nameof(section), section, null),
+            TaskResetKind.Quotidien => configuration.DailyCompleted,
+            TaskResetKind.Hebdomadaire => configuration.WeeklyCompleted,
+            _ => throw new ArgumentOutOfRangeException(nameof(resetKind), resetKind, null),
         };
     }
 
-    private Dictionary<string, bool> GetCompletedMap(ChecklistSectionKind section)
+    private ref string GetPersonalTaskInput(TaskResetKind resetKind)
     {
-        return section switch
+        if (resetKind == TaskResetKind.Quotidien)
         {
-            ChecklistSectionKind.Daily => configuration.DailyCompleted,
-            ChecklistSectionKind.Weekly => configuration.WeeklyCompleted,
-            _ => throw new ArgumentOutOfRangeException(nameof(section), section, null),
+            return ref dailyPersonalTaskInput;
+        }
+
+        return ref weeklyPersonalTaskInput;
+    }
+
+    private ref string? GetAddErrorMessage(TaskResetKind resetKind)
+    {
+        if (resetKind == TaskResetKind.Quotidien)
+        {
+            return ref dailyAddErrorMessage;
+        }
+
+        return ref weeklyAddErrorMessage;
+    }
+
+    private ref int GetCatalogPickerIndex(TaskResetKind resetKind)
+    {
+        if (resetKind == TaskResetKind.Quotidien)
+        {
+            return ref dailyCatalogPickerIndex;
+        }
+
+        return ref weeklyCatalogPickerIndex;
+    }
+
+    private string? GetRenameErrorMessage(TaskResetKind resetKind)
+    {
+        return resetKind switch
+        {
+            TaskResetKind.Quotidien => dailyRenameErrorMessage,
+            TaskResetKind.Hebdomadaire => weeklyRenameErrorMessage,
+            _ => null,
         };
     }
 
-    private bool TryAddTask(ChecklistSectionKind section, string rawLabel, out string? errorMessage)
+    private void SetRenameErrorMessage(TaskResetKind resetKind, string? message)
     {
-        return section switch
+        switch (resetKind)
         {
-            ChecklistSectionKind.Daily => configuration.TryAddDailyTask(rawLabel, out errorMessage),
-            ChecklistSectionKind.Weekly => configuration.TryAddWeeklyTask(rawLabel, out errorMessage),
-            _ => throw new ArgumentOutOfRangeException(nameof(section), section, null),
-        };
-    }
-
-    private bool TryRenameTask(ChecklistSectionKind section, string taskId, string rawLabel, out string? errorMessage)
-    {
-        return section switch
-        {
-            ChecklistSectionKind.Daily => configuration.TryRenameDailyTask(taskId, rawLabel, out errorMessage),
-            ChecklistSectionKind.Weekly => configuration.TryRenameWeeklyTask(taskId, rawLabel, out errorMessage),
-            _ => throw new ArgumentOutOfRangeException(nameof(section), section, null),
-        };
-    }
-
-    private bool TryRemoveTask(ChecklistSectionKind section, string taskId, out string? errorMessage)
-    {
-        return section switch
-        {
-            ChecklistSectionKind.Daily => configuration.TryRemoveDailyTask(taskId, out errorMessage),
-            ChecklistSectionKind.Weekly => configuration.TryRemoveWeeklyTask(taskId, out errorMessage),
-            _ => throw new ArgumentOutOfRangeException(nameof(section), section, null),
-        };
-    }
-
-    private enum ChecklistSectionKind
-    {
-        Daily,
-        Weekly,
+            case TaskResetKind.Quotidien:
+                dailyRenameErrorMessage = message;
+                break;
+            case TaskResetKind.Hebdomadaire:
+                weeklyRenameErrorMessage = message;
+                break;
+        }
     }
 }

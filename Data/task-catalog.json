@@ -1,0 +1,39 @@
+{
+  "tasks": [
+    {
+      "id": "daily.roulettes",
+      "nom": "Roulettes",
+      "categorie": "Contenu",
+      "reset": "Quotidien",
+      "description": "Roulettes allégées disponibles chaque jour."
+    },
+    {
+      "id": "daily.tribus",
+      "nom": "Quêtes tribus",
+      "categorie": "Quêtes",
+      "reset": "Quotidien",
+      "description": "Quêtes journalières des peuples alliés."
+    },
+    {
+      "id": "daily.tresors",
+      "nom": "Cartes aux trésors",
+      "categorie": "Contenu",
+      "reset": "Quotidien",
+      "description": "Chasse aux trésors avec cartes."
+    },
+    {
+      "id": "weekly.raid",
+      "nom": "Raid hebdomadaire",
+      "categorie": "Raid",
+      "reset": "Hebdomadaire",
+      "description": "Récompenses de raid limitées par semaine."
+    },
+    {
+      "id": "weekly.tomes",
+      "nom": "Tomes allégés",
+      "categorie": "Progression",
+      "reset": "Hebdomadaire",
+      "description": "Plafond de tomes allégés hebdomadaire."
+    }
+  ]
+}
